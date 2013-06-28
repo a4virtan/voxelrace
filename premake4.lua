@@ -76,7 +76,7 @@ solution "VoxelRace"
 
   if (_OPTIONS["with-polyvox"]) then
     polyvoxlibs = "-L" .. _OPTIONS["with-polyvox"] .. "/lib " .. polyvoxlibs
-    polyvoxinc = _OPTIONS["with-polyvox"] .. "/include"
+    polyvoxinc = _OPTIONS["with-polyvox"] .. "/include/PolyVoxCore"
   end
 
   if (_OPTIONS["with-ogre"]) then
@@ -102,4 +102,4 @@ solution "VoxelRace"
     includedirs { ".", boostinc, polyvoxinc}
     links { }
     buildoptions { "`" .. pkgconfig .. " --cflags OGRE OIS bullet`" }
-    linkoptions { "`" .. pkgconfig .. " --libs OGRE OIS bullet` " .. libdir .. " " .. polyvoxlibs }
+    linkoptions { "`" .. pkgconfig .. " --libs OGRE OIS bullet` " .. libdir .. " " .. polyvoxlibs .. " " .. boostlibs }
