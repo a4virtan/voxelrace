@@ -1,7 +1,9 @@
-#include "Client.h"
+#include "Controller.h"
+
+#include <memory>
 
 int main(int argc, char **argv)
 {
-    Client client;
-    client.run();
+    std::shared_ptr<Controller> controller = std::make_shared<Controller>();
+    controller->run();
 }

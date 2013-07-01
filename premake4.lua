@@ -1,5 +1,5 @@
 local action = _ACTION or ""
-local boostlibs = "-lboost_filesystem -lboost_system -lboost_random -lboost_thread -lboost_program_options -lboost_unit_test_framework"
+local boostlibs = "-lboost_system"
 local boostinc = ""
 local pkgconfig = "pkg-config"
 local pkgconfigenv = ""
@@ -56,7 +56,7 @@ solution "VoxelRace"
 
   language "C++"
   kind "SharedLib"
-  buildoptions { "--std=c++11 -Wall -Wextra" }
+  buildoptions { "--std=c++11 -Wall" }
   location ( "build/" .. action )
   defines { "TIXML_USE_STL" }
 
