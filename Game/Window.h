@@ -31,20 +31,17 @@ public:
     void addViewport(Ogre::Camera* camera);
 
     typedef boost::signals2::signal<void (const OIS::MouseEvent&)> MouseMoveSignalType;
-    typedef boost::signals2::signal<void (const OIS::MouseEvent&, OIS::MouseButtonID)> MouseButtonSignalType;
-    typedef boost::signals2::signal<void (const OIS::KeyEvent&)> KeyboardSignalType;
+    typedef boost::signals2::signal<void (const OIS::MouseEvent&, OIS::MouseButtonID, bool)> MouseButtonSignalType;
+    typedef boost::signals2::signal<void (const OIS::KeyEvent&, bool)> KeyboardSignalType;
     typedef boost::signals2::signal<void (const OIS::JoyStickEvent&, int)> JoystickSignalType;
+    typedef boost::signals2::signal<void (const OIS::JoyStickEvent&, int, bool)> JoystickButtonSignalType;
     typedef boost::signals2::signal<void (const Window&)> WindowCloseSignalType;
 
     MouseMoveSignalType onMouseMove;
     MouseButtonSignalType onMousePress;
-    MouseButtonSignalType onMouseRelease;
     KeyboardSignalType onKeyPress;
-    KeyboardSignalType onKeyRelease;
-    JoystickSignalType onJoystickButtonPress;
-    JoystickSignalType onJoystickButtonRelease;
+    JoystickButtonSignalType onJoystickButtonPress;
     JoystickSignalType onJoystickAxisMove;
-
     WindowCloseSignalType onClose;
 
 private:

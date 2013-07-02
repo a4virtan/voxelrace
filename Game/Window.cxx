@@ -72,13 +72,13 @@ void Window::step(const Ogre::FrameEvent& event)
 
 bool Window::keyReleased(const OIS::KeyEvent& arg)
 {
-    onKeyRelease(arg);
+    onKeyPress(arg, false);
     return true;
 }
 
 bool Window::keyPressed(const OIS::KeyEvent& arg)
 {
-    onKeyPress(arg);
+    onKeyPress(arg, true);
     return true;
 }
 
@@ -90,25 +90,25 @@ bool Window::mouseMoved(const OIS::MouseEvent& arg)
 
 bool Window::mousePressed(const OIS::MouseEvent& arg, OIS::MouseButtonID id)
 {
-    onMousePress(arg, id);
+    onMousePress(arg, id, true);
     return true;
 }
 
 bool Window::mouseReleased(const OIS::MouseEvent &arg, OIS::MouseButtonID id)
 {
-    onMouseRelease(arg, id);
+    onMousePress(arg, id, false);
     return true;
 }
 
 bool Window::buttonPressed(const OIS::JoyStickEvent& arg, int button)
 {
-    onJoystickButtonPress(arg, button);
+    onJoystickButtonPress(arg, button, true);
     return true;
 }
 
 bool Window::buttonReleased(const OIS::JoyStickEvent& arg, int button)
 {
-    onJoystickButtonRelease(arg, button);
+    onJoystickButtonPress(arg, button, false);
     return true;
 }
 

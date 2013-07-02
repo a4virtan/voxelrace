@@ -28,7 +28,9 @@ private:
 
     void windowClosed(const Window& window);
 
-    void keyPressed(const OIS::KeyEvent& event);
+    void keyPressed(const OIS::KeyEvent& event, bool state);
+
+    void mouseMoved(const OIS::MouseEvent& event);
 
     void setupScene();
 
@@ -38,4 +40,5 @@ private:
     Ogre::Camera* camera;
     std::shared_ptr<Window> window;
     bool running;
+    Ogre::Vector3 moveVector;
 };

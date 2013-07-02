@@ -31,9 +31,10 @@ void Controller::run() {
     window = std::make_shared<Window>(ogreWindow, this);
     window->init();
     window->onClose.connect(Window::WindowCloseSignalType::slot_type(&Controller::windowClosed, shared_from_this(), _1).track_foreign(shared_from_this()));
-    window->onKeyPress.connect(Window::KeyboardSignalType::slot_type(&Controller::keyPressed, shared_from_this(), _1).track_foreign(shared_from_this()));
+    window->onKeyPress.connect(Window::KeyboardSignalType::slot_type(&Controller::keyPressed, shared_from_this(), _1, _2).track_foreign(shared_from_this()));
+    window->onMouseMove.connect(Window::MouseMoveSignalType::slot_type(&Controller::mouseMoved, shared_from_this(), _1).track_foreign(shared_from_this()));
     sceneManager.reset(Ogre::Root::getSingleton().createSceneManager("OctreeSceneManager"));
-    sceneManager->setAmbientLight(Ogre::ColourValue(0.5, 0.5, 0.5));
+    sceneManager->setAmbientLight(Ogre::ColourValue(0.7, 0.7, 0.7));
     Ogre::MeshManager::getSingleton().setBoundsPaddingFactor(0.0f);
     camera = sceneManager->createCamera("camera");
     camera->setAutoAspectRatio(true);
@@ -55,6 +56,7 @@ void Controller::run() {
 
 bool Controller::frameRenderingQueued(const Ogre::FrameEvent& event) {
     onFrameRender(event);
+    camera->moveRelative(moveVector);
     std::this_thread::sleep_for(std::chrono::milliseconds(1L));
     return running && window;
 }
@@ -92,8 +94,21 @@ void Controller::windowClosed(const Window& window) {
     running = false;
 }
 
-void Controller::keyPressed(const OIS::KeyEvent& event) {
+void Controller::keyPressed(const OIS::KeyEvent& event, bool state) {
     if(event.key == OIS::KeyCode::KC_ESCAPE) {
         running = false;
+    } else if(event.key == OIS::KeyCode::KC_W) {
+        moveVector = Ogre::Vector3(0.0f, 0.0f, state ? -0.1f : 0.0f);
+    } else if(event.key == OIS::KeyCode::KC_S) {
+        moveVector = Ogre::Vector3(0.0f, 0.0f, state ? 0.1f : 0.0f);
+    } else if(event.key == OIS::KeyCode::KC_A) {
+        moveVector = Ogre::Vector3(state ? -0.1f : 0.0f, 0.0f, 0.0f);
+    } else if(event.key == OIS::KeyCode::KC_D) {
+        moveVector = Ogre::Vector3(state ? 0.1f : 0.0f, 0.0f, 0.0f);
     }
+}
+
+void Controller::mouseMoved(const OIS::MouseEvent& event) {
+    camera->yaw(Ogre::Degree(-event.state.X.rel * 0.1f));
+    camera->pitch(Ogre::Degree(-event.state.Y.rel * 0.1f));
 }
