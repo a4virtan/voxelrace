@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <thread>
+#include <OGRE/OgreImage.h>
 #include "PolyVoxCore/CubicSurfaceExtractorWithNormals.h"
 #include "PolyVoxCore/MarchingCubesSurfaceExtractor.h"
 #include "PolyVoxCore/SurfaceMesh.h"
@@ -26,6 +27,14 @@ Controller::~Controller() {
 void Controller::run() {
     if(!ogreRoot->restoreConfig())
         ogreRoot->showConfigDialog();
+
+    ogreRoot->addResourceLocation("data/material", "FileSystem", "material");
+    ogreRoot->addResourceLocation("data/mesh", "FileSystem", "meshes");
+    ogreRoot->addResourceLocation("data/texture", "FileSystem", "texture");
+    ogreRoot->addResourceLocation("data/particle", "FileSystem", "particle");
+    ogreRoot->addResourceLocation("data/sound", "FileSystem", "sound");
+    ogreRoot->addResourceLocation("data/map", "FileSystem", "map");
+
     Ogre::RenderWindow* ogreWindow = ogreRoot->initialise(true, "Game");
     Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
     window = std::make_shared<Window>(ogreWindow, this);
@@ -63,14 +72,26 @@ bool Controller::frameRenderingQueued(const Ogre::FrameEvent& event) {
 
 void Controller::setupScene() {
     std::cout << "setupScene start" << std::endl;
-    PolyVox::SimpleVolume<uint8_t> volData(PolyVox::Region(PolyVox::Vector3DInt32(0,0,0), PolyVox::Vector3DInt32(63, 63, 63)));
-    for(int x = 0; x < volData.getWidth(); x += 5) {
-        for(int y = 0; y < volData.getHeight(); y++) {
-            volData.setVoxelAt(x, y, 0, 255);;
+
+    Ogre::Image heightMap;
+    heightMap.load("test.png", "map");
+
+    std::cout << "filling voxels" << std::endl;
+    PolyVox::SimpleVolume<uint8_t> volData(PolyVox::Region(PolyVox::Vector3DInt32(0,0,0), PolyVox::Vector3DInt32(heightMap.getWidth() - 1, heightMap.getHeight() - 1, 255)));
+    std::cout << "dimensions - x: " << volData.getWidth() << ", y: " << volData.getHeight() << ", z: " << volData.getDepth() << std::endl;
+    for(int x = 0; x < volData.getWidth(); ++x) {
+        for(int y = 0; y < volData.getHeight(); ++y) {
+            Ogre::ColourValue color = heightMap.getColourAt(x, y, 0);
+            int value = (color.r + color.g + color.b) / 3.0f * 255;
+            for(int z = 0; z < volData.getDepth(); ++z) {
+                volData.setVoxelAt(x, y, z, (value > z || z == 0) ? 255 : 0);
+            }
         }
     }
+    std::cout << "extracting mesh" << std::endl;
     PolyVox::SurfaceMesh<PolyVox::PositionMaterialNormal> mesh;
     PolyVox::CubicSurfaceExtractorWithNormals<PolyVox::SimpleVolume<uint8_t> > surfaceExtractor(&volData, volData.getEnclosingRegion(), &mesh);
+    //PolyVox::MarchingCubesSurfaceExtractor<PolyVox::SimpleVolume<uint8_t> > surfaceExtractor(&volData, volData.getEnclosingRegion(), &mesh);
     surfaceExtractor.execute();
 
     Ogre::ManualObject* manual = sceneManager->createManualObject("manual");
