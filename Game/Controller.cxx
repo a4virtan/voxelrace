@@ -84,22 +84,42 @@ void Controller::setupScene() {
             Ogre::ColourValue color = heightMap.getColourAt(x, y, 0);
             int value = (color.r + color.g + color.b) / 3.0f * 255;
             for(int z = 0; z < volData.getDepth(); ++z) {
-                volData.setVoxelAt(x, y, z, (value > z || z == 0) ? 255 : 0);
+                if(value > z || z == 0) {
+                    volData.setVoxelAt(x, y, z, 255);
+                }
             }
         }
     }
     std::cout << "extracting mesh" << std::endl;
     PolyVox::SurfaceMesh<PolyVox::PositionMaterialNormal> mesh;
-    PolyVox::CubicSurfaceExtractorWithNormals<PolyVox::SimpleVolume<uint8_t> > surfaceExtractor(&volData, volData.getEnclosingRegion(), &mesh);
-    //PolyVox::MarchingCubesSurfaceExtractor<PolyVox::SimpleVolume<uint8_t> > surfaceExtractor(&volData, volData.getEnclosingRegion(), &mesh);
+    //PolyVox::CubicSurfaceExtractorWithNormals<PolyVox::SimpleVolume<uint8_t> > surfaceExtractor(&volData, volData.getEnclosingRegion(), &mesh);
+    PolyVox::MarchingCubesSurfaceExtractor<PolyVox::SimpleVolume<uint8_t> > surfaceExtractor(&volData, volData.getEnclosingRegion(), &mesh);
     surfaceExtractor.execute();
 
     Ogre::ManualObject* manual = sceneManager->createManualObject("manual");
-    manual->begin("BaseWhite", Ogre::RenderOperation::OT_LINE_LIST);
+    manual->estimateVertexCount(mesh.getVertices().size());
+    manual->estimateIndexCount(mesh.getIndices().size());
+    manual->begin("grass", Ogre::RenderOperation::OT_TRIANGLE_LIST, "material");
+
+    float minX = mesh.getVertices()[0].position.getX();
+    float maxX = mesh.getVertices()[0].position.getX();
+    float minY = mesh.getVertices()[0].position.getY();
+    float maxY = mesh.getVertices()[0].position.getY();
+    for(const auto& vertex : mesh.getVertices()) {
+        if(vertex.position.getX() > maxX) maxX = vertex.position.getX();
+        if(vertex.position.getX() < minX) minX = vertex.position.getX();
+        if(vertex.position.getY() > maxY) maxY = vertex.position.getY();
+        if(vertex.position.getY() < minY) minY = vertex.position.getY();
+    }
+    float rangeX = maxX - minX;
+    float rangeY = maxY - minY;
 
     for(const auto& vertex : mesh.getVertices()) {
         manual->position(vertex.position.getX(), vertex.position.getY(), vertex.position.getZ());
+        manual->textureCoord(rangeX / (vertex.position.getX() - minX),
+                             rangeY / (vertex.position.getY() - minY));
     }
+
     for(const auto& index : mesh.getIndices()) {
         manual->index(index);
     }
