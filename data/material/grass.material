@@ -10,6 +10,7 @@ material grass
             texture_unit
             {
                 texture GrassGreenTexture0006.jpg
+                filtering anisotropic point linear
             }
         }
     }

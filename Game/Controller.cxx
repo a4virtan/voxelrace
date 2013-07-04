@@ -74,7 +74,7 @@ void Controller::setupScene() {
     std::cout << "setupScene start" << std::endl;
 
     Ogre::Image heightMap;
-    heightMap.load("test.png", "map");
+    heightMap.load("test3.png", "map");
 
     std::cout << "filling voxels" << std::endl;
     PolyVox::SimpleVolume<uint8_t> volData(PolyVox::Region(PolyVox::Vector3DInt32(0,0,0), PolyVox::Vector3DInt32(heightMap.getWidth() - 1, heightMap.getHeight() - 1, 255)));
@@ -116,8 +116,9 @@ void Controller::setupScene() {
 
     for(const auto& vertex : mesh.getVertices()) {
         manual->position(vertex.position.getX(), vertex.position.getY(), vertex.position.getZ());
-        manual->textureCoord(rangeX / (vertex.position.getX() - minX),
-                             rangeY / (vertex.position.getY() - minY));
+        manual->textureCoord((vertex.position.getX() - minX) / rangeX,
+                             (vertex.position.getY() - minY) / rangeY);
+        manual->normal(vertex.normal.getX(), vertex.normal.getY(), vertex.normal.getZ());
     }
 
     for(const auto& index : mesh.getIndices()) {
