@@ -43,7 +43,7 @@ void Controller::run() {
     window->onKeyPress.connect(Window::KeyboardSignalType::slot_type(&Controller::keyPressed, shared_from_this(), _1, _2).track_foreign(shared_from_this()));
     window->onMouseMove.connect(Window::MouseMoveSignalType::slot_type(&Controller::mouseMoved, shared_from_this(), _1).track_foreign(shared_from_this()));
     sceneManager.reset(Ogre::Root::getSingleton().createSceneManager("OctreeSceneManager"));
-    sceneManager->setAmbientLight(Ogre::ColourValue(0.7, 0.7, 0.7));
+    sceneManager->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
     Ogre::MeshManager::getSingleton().setBoundsPaddingFactor(0.0f);
     camera = sceneManager->createCamera("camera");
     camera->setAutoAspectRatio(true);
@@ -96,6 +96,7 @@ void Controller::setupScene() {
     PolyVox::MarchingCubesSurfaceExtractor<PolyVox::SimpleVolume<uint8_t> > surfaceExtractor(&volData, volData.getEnclosingRegion(), &mesh);
     surfaceExtractor.execute();
 
+    std::cout << "importing mesh" << std::endl;
     Ogre::ManualObject* manual = sceneManager->createManualObject("manual");
     manual->estimateVertexCount(mesh.getVertices().size());
     manual->estimateIndexCount(mesh.getIndices().size());
@@ -128,6 +129,12 @@ void Controller::setupScene() {
     manual->end();
     worldNode = sceneManager->getRootSceneNode()->createChildSceneNode("world");
     worldNode->attachObject(manual);
+
+    Ogre::Light* directionalLight = sceneManager->createLight("sun");
+    directionalLight->setType(Ogre::Light::LT_DIRECTIONAL);
+    directionalLight->setDiffuseColour(Ogre::ColourValue::White);
+    directionalLight->setSpecularColour(Ogre::ColourValue(0.4f, 0.4f, 0.4f));
+    directionalLight->setDirection(Ogre::Vector3(-0.4f, -0.4f, -0.4f));
 
     std::cout << "setupScene end" << std::endl;
 }
