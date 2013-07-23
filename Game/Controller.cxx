@@ -17,16 +17,16 @@ Controller::Controller() :
     ogreRoot->loadPlugin("Plugin_ParticleFX");
     ogreRoot->loadPlugin("Plugin_OctreeSceneManager");
     ogreRoot->loadPlugin("Plugin_CgProgramManager");
-
-    ogreRoot->addFrameListener(this);
 }
 
 Controller::~Controller() {
 }
 
-void Controller::run() {
+void Controller::init() {
     if(!ogreRoot->restoreConfig())
         ogreRoot->showConfigDialog();
+
+    ogreRoot->addFrameListener(this);
 
     ogreRoot->addResourceLocation("data/material", "FileSystem", "material");
     ogreRoot->addResourceLocation("data/mesh", "FileSystem", "meshes");
@@ -54,8 +54,21 @@ void Controller::run() {
     camera->setPosition(Ogre::Vector3(0.0f, 10.0f, 200.0f));
     camera->lookAt(Ogre::Vector3(0.0f, 0.0f, 0.0f));
 
-    setupScene();
+    collisionConfiguration.reset(new btDefaultCollisionConfiguration());
+    collisionDispatcher.reset(new btCollisionDispatcher(collisionConfiguration.get()));
+    btVector3 worldMin(-1000, -1000, -1000);
+    btVector3 worldMax(1000, 1000, 1000);
+    overlappingPairCache.reset(new btAxisSweep3(worldMin, worldMax));
+    constraintSolver.reset(new btSequentialImpulseConstraintSolver());
+    dynamicsWorld.reset(new btDiscreteDynamicsWorld(collisionDispatcher.get(), overlappingPairCache.get(), constraintSolver.get(), collisionConfiguration.get()));
+    btVector3 gravity(0.0f, -9.8f, 0.0f);
+    dynamicsWorld->setGravity(gravity);
 
+    setupScene();
+}
+
+void Controller::run() {
+    lastStep = std::chrono::system_clock::now();
     try {
         ogreRoot->startRendering();
     } catch(const std::exception& e) {
@@ -66,6 +79,10 @@ void Controller::run() {
 bool Controller::frameRenderingQueued(const Ogre::FrameEvent& event) {
     onFrameRender(event);
     camera->moveRelative(moveVector);
+    std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+    double dt = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(now - lastStep).count()) / 1000.0f;
+    dynamicsWorld->stepSimulation(dt, 5);
+    lastStep = now;
     std::this_thread::sleep_for(std::chrono::milliseconds(1L));
     return running && window;
 }
