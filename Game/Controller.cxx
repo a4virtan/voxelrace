@@ -4,6 +4,7 @@
 #include <chrono>
 #include <thread>
 #include <OGRE/OgreImage.h>
+#include <OGRE/OgreEntity.h>
 #include "PolyVoxCore/CubicSurfaceExtractorWithNormals.h"
 #include "PolyVoxCore/MarchingCubesSurfaceExtractor.h"
 #include "PolyVoxCore/SurfaceMesh.h"
@@ -45,7 +46,7 @@ void Controller::init() {
     ogreRoot->addFrameListener(this);
 
     ogreRoot->addResourceLocation("data/material", "FileSystem", "material");
-    ogreRoot->addResourceLocation("data/mesh", "FileSystem", "meshes");
+    ogreRoot->addResourceLocation("data/mesh", "FileSystem", "mesh");
     ogreRoot->addResourceLocation("data/texture", "FileSystem", "texture");
     ogreRoot->addResourceLocation("data/particle", "FileSystem", "particle");
     ogreRoot->addResourceLocation("data/sound", "FileSystem", "sound");
@@ -99,6 +100,15 @@ bool Controller::frameRenderingQueued(const Ogre::FrameEvent& event) {
     double dt = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(now - lastStep).count()) / 1000.0f;
     dynamicsWorld->stepSimulation(dt, 5);
     lastStep = now;
+    for(int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; --i) {
+        btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[i];
+        btRigidBody* body = btRigidBody::upcast(obj);
+        if (body && body->getMotionState()) {
+            Ogre::SceneNode *node = static_cast<Ogre::SceneNode*>(body->getUserPointer());
+            btVector3 point = body->getCenterOfMassPosition();
+            node->setPosition(Ogre::Vector3((float)point[0], (float)point[1], (float)point[2]));
+        }
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(1L));
     return running && window;
 }
@@ -162,8 +172,13 @@ void Controller::setupScene() {
     }
 
     manual->end();
+
+    std::cout << "attaching mesh" << std::endl;
+
     worldNode = sceneManager->getRootSceneNode()->createChildSceneNode("world");
     worldNode->attachObject(manual);
+
+    std::cout << "adding sun" << std::endl;
 
     Ogre::Light* directionalLight = sceneManager->createLight("sun");
     directionalLight->setType(Ogre::Light::LT_DIRECTIONAL);
@@ -171,22 +186,47 @@ void Controller::setupScene() {
     directionalLight->setSpecularColour(Ogre::ColourValue(0.4f, 0.4f, 0.4f));
     directionalLight->setDirection(Ogre::Vector3(-0.4f, -0.4f, -0.4f));
 
-    btHeightfieldTerrainShape* heightfieldShape = new btHeightfieldTerrainShape(volData.getWidth(), volData.getHeight(),
-                                                                                 collisionHeightMap,
-                                                                                 255, 1, false, false);
-    collisionShapes.push_back(heightfieldShape);
+    std::cout << "creating terrain collision shape" << std::endl;
 
-    btTransform tr;
-    tr.setIdentity();
-    tr.setOrigin(btVector3(minX + rangeX / 2, minY + rangeY / 2, 0));
-    btVector3 localInertia(0, 0, 0);
-    btDefaultMotionState* motionState = new btDefaultMotionState(tr);
-    btRigidBody::btRigidBodyConstructionInfo info(0.0f, motionState, heightfieldShape, localInertia);
-    btRigidBody* body = new btRigidBody(info);
-    body->setContactProcessingThreshold(BT_LARGE_FLOAT);
-    dynamicsWorld->addRigidBody(body);
+    btHeightfieldTerrainShape* heightfieldShape = new btHeightfieldTerrainShape(volData.getWidth(), volData.getHeight(),
+                                                                                collisionHeightMap,
+                                                                                255, 1, false, false);
+    collisionShapes.push_back(heightfieldShape);
+    newRigidBody(heightfieldShape, 0.0f, btVector3(minX + rangeX / 2, minY + rangeY / 2, 0), worldNode);
+
+    camera->lookAt(Ogre::Vector3(minX + rangeX / 2, minY + rangeY / 2, 0));
+
+    std::cout << "adding cube" << std::endl;
+
+    Ogre::MeshPtr cubeMesh = Ogre::MeshManager::getSingleton().load("cube.mesh", "mesh");
+    Ogre::Entity* cubeEntity = sceneManager->createEntity("cube.entity", cubeMesh);
+    Ogre::SceneNode* cubeNode = worldNode->createChildSceneNode("cube.node");
+    cubeNode->attachObject(cubeEntity);
+    cubeNode->setScale(0.1f, 0.1f, 0.1f);
+
+    btBoxShape* cubeShape = new btBoxShape(btVector3(5.0f, 5.0f, 5.0f));
+    collisionShapes.push_back(cubeShape);
+    btRigidBody* cubeBody = newRigidBody(cubeShape, 5.0f, btVector3(minX + rangeX / 2, minY + rangeY / 2, 50), cubeNode);
+
+    cubeEntity->setUserAny(Ogre::Any(cubeBody));
 
     std::cout << "setupScene end" << std::endl;
+}
+
+btRigidBody* Controller::newRigidBody(btCollisionShape* shape, float mass, btVector3 origin, Ogre::SceneNode* node) {
+    btTransform tr;
+    tr.setIdentity();
+    tr.setOrigin(origin);
+    btVector3 localInertia(0, 0, 0);
+    if(mass)
+        shape->calculateLocalInertia(mass, localInertia);
+    btDefaultMotionState* motionState = new btDefaultMotionState(tr);
+    btRigidBody::btRigidBodyConstructionInfo info(mass, motionState, shape, localInertia);
+    btRigidBody* body = new btRigidBody(info);
+    body->setContactProcessingThreshold(BT_LARGE_FLOAT);
+    body->setUserPointer(node);
+    dynamicsWorld->addRigidBody(body);
+    return body;
 }
 
 void Controller::windowClosed(const Window& window) {

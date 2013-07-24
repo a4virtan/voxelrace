@@ -39,6 +39,8 @@ private:
 
     void setupScene();
 
+    btRigidBody* newRigidBody(btCollisionShape* shape, float mass, btVector3 origin, Ogre::SceneNode* node);
+
     std::unique_ptr<Ogre::Root> ogreRoot;
     std::unique_ptr<Ogre::SceneManager> sceneManager;
     Ogre::SceneNode* worldNode;
