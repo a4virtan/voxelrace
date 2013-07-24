@@ -11,7 +11,8 @@
 
 Controller::Controller() :
     ogreRoot(new Ogre::Root()),
-    running(true)
+    running(true),
+    collisionHeightMap(0)
 {
     ogreRoot->loadPlugin("RenderSystem_GL");
     ogreRoot->loadPlugin("Plugin_ParticleFX");
@@ -20,6 +21,21 @@ Controller::Controller() :
 }
 
 Controller::~Controller() {
+    for(int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; --i) {
+        btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[i];
+        btRigidBody* body = btRigidBody::upcast(obj);
+        if (body && body->getMotionState()) {
+            delete body->getMotionState();
+        }
+        dynamicsWorld->removeCollisionObject( obj );
+        delete obj;
+    }
+
+    for (int i = 0; i < collisionShapes.size(); ++i) {
+        delete collisionShapes[i];
+    }
+
+    delete collisionHeightMap;
 }
 
 void Controller::init() {
@@ -95,11 +111,13 @@ void Controller::setupScene() {
 
     std::cout << "filling voxels" << std::endl;
     PolyVox::SimpleVolume<uint8_t> volData(PolyVox::Region(PolyVox::Vector3DInt32(0,0,0), PolyVox::Vector3DInt32(heightMap.getWidth() - 1, heightMap.getHeight() - 1, 255)));
+    collisionHeightMap = new uint8_t[volData.getWidth() * volData.getHeight()];
     std::cout << "dimensions - x: " << volData.getWidth() << ", y: " << volData.getHeight() << ", z: " << volData.getDepth() << std::endl;
     for(int x = 0; x < volData.getWidth(); ++x) {
         for(int y = 0; y < volData.getHeight(); ++y) {
             Ogre::ColourValue color = heightMap.getColourAt(x, y, 0);
             int value = (color.r + color.g + color.b) / 3.0f * 255;
+            collisionHeightMap[x * volData.getWidth() + y] = value;
             for(int z = 0; z < volData.getDepth(); ++z) {
                 if(value > z || z == 0) {
                     volData.setVoxelAt(x, y, z, 255);
@@ -152,6 +170,21 @@ void Controller::setupScene() {
     directionalLight->setDiffuseColour(Ogre::ColourValue::White);
     directionalLight->setSpecularColour(Ogre::ColourValue(0.4f, 0.4f, 0.4f));
     directionalLight->setDirection(Ogre::Vector3(-0.4f, -0.4f, -0.4f));
+
+    btHeightfieldTerrainShape* heightfieldShape = new btHeightfieldTerrainShape(volData.getWidth(), volData.getHeight(),
+                                                                                 collisionHeightMap,
+                                                                                 255, 1, false, false);
+    collisionShapes.push_back(heightfieldShape);
+
+    btTransform tr;
+    tr.setIdentity();
+    tr.setOrigin(btVector3(minX + rangeX / 2, minY + rangeY / 2, 0));
+    btVector3 localInertia(0, 0, 0);
+    btDefaultMotionState* motionState = new btDefaultMotionState(tr);
+    btRigidBody::btRigidBodyConstructionInfo info(0.0f, motionState, heightfieldShape, localInertia);
+    btRigidBody* body = new btRigidBody(info);
+    body->setContactProcessingThreshold(BT_LARGE_FLOAT);
+    dynamicsWorld->addRigidBody(body);
 
     std::cout << "setupScene end" << std::endl;
 }

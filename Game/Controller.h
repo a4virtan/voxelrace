@@ -52,6 +52,7 @@ private:
     std::unique_ptr<btCollisionDispatcher> collisionDispatcher;
     std::unique_ptr<btAxisSweep3> overlappingPairCache;
     std::unique_ptr<btSequentialImpulseConstraintSolver> constraintSolver;
-    std::unique_ptr<btAlignedObjectArray<btCollisionShape>> collisionShapes;
     std::unique_ptr<btDynamicsWorld> dynamicsWorld;
+    btAlignedObjectArray<btCollisionShape*> collisionShapes;
+    uint8_t* collisionHeightMap;
 };
