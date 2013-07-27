@@ -68,7 +68,7 @@ void Controller::init() {
     camera->setNearClipDistance(0.1f);
     camera->setFarClipDistance(1000.0f);
     window->addViewport(camera);
-    camera->setPosition(Ogre::Vector3(0.0f, 10.0f, 200.0f));
+    camera->setPosition(Ogre::Vector3(0.0f, 0.0f, 300.0f));
     camera->lookAt(Ogre::Vector3(0.0f, 0.0f, 0.0f));
 
     collisionConfiguration.reset(new btDefaultCollisionConfiguration());
@@ -78,7 +78,7 @@ void Controller::init() {
     overlappingPairCache.reset(new btAxisSweep3(worldMin, worldMax));
     constraintSolver.reset(new btSequentialImpulseConstraintSolver());
     dynamicsWorld.reset(new btDiscreteDynamicsWorld(collisionDispatcher.get(), overlappingPairCache.get(), constraintSolver.get(), collisionConfiguration.get()));
-    btVector3 gravity(0.0f, -9.8f, 0.0f);
+    btVector3 gravity(0.0f, 0.0f, -9.8f);
     dynamicsWorld->setGravity(gravity);
 
     setupScene();
@@ -105,8 +105,13 @@ bool Controller::frameRenderingQueued(const Ogre::FrameEvent& event) {
         btRigidBody* body = btRigidBody::upcast(obj);
         if (body && body->getMotionState()) {
             Ogre::SceneNode *node = static_cast<Ogre::SceneNode*>(body->getUserPointer());
-            btVector3 point = body->getCenterOfMassPosition();
-            node->setPosition(Ogre::Vector3((float)point[0], (float)point[1], (float)point[2]));
+            if(node) {
+                btTransform transform;
+                body->getMotionState()->getWorldTransform(transform);
+                btVector3 point = transform.getOrigin();
+                node->setPosition(Ogre::Vector3((float)point[0], (float)point[1], (float)point[2]));
+                //std::cout << point[0] << ", " << point[1] << ", " << point[2] << std::endl;
+            }
         }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(1L));
@@ -151,14 +156,19 @@ void Controller::setupScene() {
     float maxX = mesh.getVertices()[0].position.getX();
     float minY = mesh.getVertices()[0].position.getY();
     float maxY = mesh.getVertices()[0].position.getY();
+    float minZ = mesh.getVertices()[0].position.getZ();
+    float maxZ = mesh.getVertices()[0].position.getZ();
     for(const auto& vertex : mesh.getVertices()) {
         if(vertex.position.getX() > maxX) maxX = vertex.position.getX();
         if(vertex.position.getX() < minX) minX = vertex.position.getX();
         if(vertex.position.getY() > maxY) maxY = vertex.position.getY();
         if(vertex.position.getY() < minY) minY = vertex.position.getY();
+        if(vertex.position.getZ() > maxZ) maxZ = vertex.position.getZ();
+        if(vertex.position.getZ() < minZ) minZ = vertex.position.getZ();
     }
     float rangeX = maxX - minX;
     float rangeY = maxY - minY;
+    float rangeZ = maxZ - minZ;
 
     for(const auto& vertex : mesh.getVertices()) {
         manual->position(vertex.position.getX(), vertex.position.getY(), vertex.position.getZ());
@@ -190,10 +200,13 @@ void Controller::setupScene() {
 
     btHeightfieldTerrainShape* heightfieldShape = new btHeightfieldTerrainShape(volData.getWidth(), volData.getHeight(),
                                                                                 collisionHeightMap,
-                                                                                255, 1, false, false);
+                                                                                255, 2, false, true);
+    heightfieldShape->setUseDiamondSubdivision(true);
+    heightfieldShape->setLocalScaling(btVector3(1, 1, 1));
     collisionShapes.push_back(heightfieldShape);
-    newRigidBody(heightfieldShape, 0.0f, btVector3(minX + rangeX / 2, minY + rangeY / 2, 0), worldNode);
+    newRigidBody(heightfieldShape, 0.0f, btVector3(minX + rangeX / 2.0f, minY + rangeY / 2.0f, 255), worldNode);
 
+    camera->setPosition(Ogre::Vector3(minX + rangeX / 2, minY + rangeY / 2, 500.0f));
     camera->lookAt(Ogre::Vector3(minX + rangeX / 2, minY + rangeY / 2, 0));
 
     std::cout << "adding cube" << std::endl;
@@ -206,7 +219,7 @@ void Controller::setupScene() {
 
     btBoxShape* cubeShape = new btBoxShape(btVector3(5.0f, 5.0f, 5.0f));
     collisionShapes.push_back(cubeShape);
-    btRigidBody* cubeBody = newRigidBody(cubeShape, 5.0f, btVector3(minX + rangeX / 2, minY + rangeY / 2, 50), cubeNode);
+    btRigidBody* cubeBody = newRigidBody(cubeShape, 5.0f, btVector3(minX + rangeX / 2 + 10, minY + rangeY / 2 + 10, 200), cubeNode);
 
     cubeEntity->setUserAny(Ogre::Any(cubeBody));
 
